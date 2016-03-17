@@ -1,4 +1,4 @@
-function [ y ] = adsr_profile(N, ta, td, ts, tr, ED, ES)
+function [ y ] = adsr_profile(N, ta, td, ts, ED, ES)
 %ADSR_PROFILE Creates an ADSR envelope
 %   N   :   Number of samples
 %   ta  :   Attack time

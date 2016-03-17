@@ -20,8 +20,16 @@ y = [];
 for k = 1:length(tones)
     N = 0:(scale*fs*duration(k))-1;
     w = 2*pi/fs*tones(k);
-    adsr = adsr_profile(length(N), 0.2, 0.3, 0.4, 0.1, 0.95, 0.8);
-    s = sin(w*N);
+    adsr = adsr_profile(length(N), 0.2, 0.3, 0.4, 0.95, 0.8);
+    harmonics = 5;
+    s = zeros(1, length(N));
+    
+    for kk = 1:harmonics
+        a = 0.9;
+        b = exp(-a*(kk-1));
+        s = s + b.*sin(kk*w*N);
+    end
+    
     s = s.*adsr;
     y = [y s];
 end
