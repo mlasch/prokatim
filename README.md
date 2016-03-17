@@ -11,3 +11,5 @@ The project goal is to detect dialed numbers with the dual-tone multi-frequency 
 ## References
 
 http://www.embedded.com/design/real-world-applications/4401754/Single-tone-detection-with-the-Goertzel-algorithm
+https://en.wikipedia.org/wiki/Goertzel_algorithm
+https://courses.cs.washington.edu/courses/cse466/12au/calendar/Goertzel-EETimes.pdf

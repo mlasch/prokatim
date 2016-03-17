@@ -1,6 +1,10 @@
 function [ X ] = goertzel_custom(x, f0, fs)
-%GOERTZEL Implementation of the goertzel algorithm
-%   Detailed explanation goes here
+%GOERTZEL_CUSTOM Implementation of the goertzel algorithm
+%   The function takes
+%   x <- sampled data
+%   f0 <- frequency to be detected
+%   fs <- sample frequency of the data samples
+
     N = length(x);
     m = N*f0/fs;
     

@@ -33,3 +33,4 @@
 
 # matlab files
 *.asv
+*.m~
