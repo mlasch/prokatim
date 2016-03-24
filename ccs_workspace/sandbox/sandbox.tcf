@@ -31,6 +31,10 @@ bios.SWI.instance("SWI0").order = 3;
 bios.SWI.instance("SWI0").priority = 3;
 bios.TSK.instance("TSK_idle").order = 1;
 bios.TSK.instance("TSK0").destroy();
+bios.MEM.create("MEM0");
+bios.MEM.instance("MEM0").createHeap = 0;
+bios.MEM.instance("MEM0").len = 0x00001000;
+bios.MEM.instance("MEM0").destroy();
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();
