@@ -35,6 +35,8 @@ bios.MEM.create("MEM0");
 bios.MEM.instance("MEM0").createHeap = 0;
 bios.MEM.instance("MEM0").len = 0x00001000;
 bios.MEM.instance("MEM0").destroy();
+bios.HWI.instance("HWI_INT8").fxn = prog.extern("EDMA_service_routine");
+bios.SWI.instance("SWI0").destroy();
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

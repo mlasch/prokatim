@@ -1,8 +1,10 @@
+
 #include <csl.h>
+#include <csl_irq.h>
 #include <csl_mcbsp.h>
 #include <csl_edma.h>
 
-extern Int32 buffer_IN_A;
+volatile Int32 buffer_IN_A[108];
 
 /*
  * Helper function to write aic23 registers
@@ -28,7 +30,7 @@ enum aic23_register_map {
 	SAMPLE_RATE_CONTROL,
 	DIGITAL_INTERFACE_ACTIVATION,
 	RESET_REGISTER
-}
+};
 
 /*
  * McBSP0 config interface for aic23
@@ -48,7 +50,7 @@ MCBSP_Config MCBSP0_config = {
 		MCBSP_SPCR_CLKSTP_NODELAY,
 		MCBSP_SPCR_DXENA_OFF,
 		MCBSP_SPCR_RINTM_RRDY,
-		MCBSP_SPCR_RYSYNCRR_NO,
+		MCBSP_SPCR_RSYNCERR_NO,
 		MCBSP_SPCR_RRST_YES),
 
 	/* Receive Control Register */
@@ -117,7 +119,7 @@ MCBSP_Config MCBSP1_config = {
 		MCBSP_SPCR_CLKSTP_DISABLE,
 		MCBSP_SPCR_DXENA_OFF,
 		MCBSP_SPCR_RINTM_RRDY,
-		MCBSP_SPCR_RYSYNCRR_NO,
+		MCBSP_SPCR_RSYNCERR_NO,
 		MCBSP_SPCR_RRST_YES),
 
 	/* Receive Control Register (RCR) */
@@ -186,7 +188,7 @@ EDMA_Config EDMA_RX_config = {
 		EDMA_OPT_FS_NO),			// Frame synchronisation
 	EDMA_SRC_OF(0x00000000),			// EDMA Channel Source Address
 	EDMA_CNT_RMK(0, 108),				// Frame count (FRMCNT), Element count (FRMCNT)
-	EDMA_DST_OF(buffer_IN_A),			// EDMA Channel Destination Address
+	EDMA_DST_OF((Uint32)&buffer_IN_A),			// EDMA Channel Destination Address
 	EDMA_IDX_RMK(0x0000, 0x0004),		// Frame index, Element index
 	EDMA_RLD_RMK(0x0000, 0x0000)		// Element count reload, Link address
 };
@@ -199,7 +201,7 @@ void DSK6713_configure_AIC23() {
 
 	/* Configure McBSP0 as control interface for aic23 */
 	MCBSP_Handle MCBSP0_handle;
-	MCBSP0_handle = MCBSP_open(MCBSP0_handle, MCBSP_OPEN_RESET);
+	MCBSP0_handle = MCBSP_open(MCBSP_DEV0, MCBSP_OPEN_RESET);
 	MCBSP_config(MCBSP0_handle, &MCBSP0_config);
 	MCBSP_start(MCBSP0_handle, MCBSP_XMIT_START, 0xffffffff);
 
@@ -218,16 +220,19 @@ void DSK6713_configure_AIC23() {
 
 	/* Configure McBSP1 as data interface for aic23 */
 	MCBSP_Handle MCBSP1_handle;
-	MCBSP1_handle MCBSP_open(MCBSP1_handle, MCBSP_OPEN_RESET);
+	MCBSP1_handle = MCBSP_open(MCBSP_DEV1, MCBSP_OPEN_RESET);
 	MCBSP_config(MCBSP1_handle, &MCBSP1_config);
 	MCBSP_start(MCBSP1_handle, MCBSP_XMIT_START, 0xffffffff);
 	receiveAddr = MCBSP_getRcvAddr(MCBSP1_handle);		// Get address of DRR
 
 	/* Configure EDMA */
 	EDMA_Handle EDMA_RX_handle;
-	EDMA_handle = EDMA_open(EDMA_RX_handle, EDMA_CHA_REVT1, EDMA_OPEN_RESET);
+	EDMA_RX_handle = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
 	EDMA_RX_config.src = receiveAddr;
 	EDMA_config(EDMA_RX_handle, &EDMA_RX_config);
 	EDMA_enableChannel(EDMA_RX_handle);
-	EDMA_intEnable();
+
+	IRQ_reset(IRQ_EVT_EDMAINT);
+	IRQ_disable(IRQ_EVT_EDMAINT);
+	EDMA_intEnable(EDMA_CHA_REVT1);
 }
