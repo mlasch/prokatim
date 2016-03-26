@@ -12,10 +12,6 @@
 #include "config_audio_codec.h"
 
 
-
-
-
-
 volatile Uint32 cnt;
 
 int main(void) {
@@ -26,7 +22,6 @@ int main(void) {
 	DSK6713_init();
 	DSK6713_LED_init();
 
-
 	DSK6713_configure_AIC23();
 
 	IRQ_globalEnable();
@@ -35,9 +30,10 @@ int main(void) {
 	DSK6713_LED_off(1);
 	DSK6713_LED_on(2);
 	DSK6713_LED_off(3);
+
+
+
 	return 0;
 }
 
-void EDMA_service_routine() {
-	cnt++;
-}
+

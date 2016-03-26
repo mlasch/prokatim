@@ -4,15 +4,23 @@
 #include <csl_mcbsp.h>
 #include <csl_edma.h>
 
-volatile Int32 buffer_IN_A[108];
+#include <log.h>
+
+Uint32 gRcvBufferA[108];
+Uint32 gRcvBufferB[108];
+
+Int8 gTccRcvChan;
+
+extern LOG_Obj LOG0;
 
 /*
  * Helper function to write aic23 registers
  */
-static void set_aic23_register(MCBSP_Handle MCBSP_handle, Uint16 reg, Uint16 val) {
+static void set_aic23_register(MCBSP_Handle hMcbsp, Uint16 reg, Uint16 val) {
 	val &= 0x1ff;
-	while(!MCBSP_xrdy(MCBSP_handle));
-	MCBSP_write(MCBSP_handle, (reg<<9) | val);
+	//LOG_printf(&LOG0, "Transmit data: %d", (reg<<9) | val);
+	while(!MCBSP_xrdy(hMcbsp));
+	MCBSP_write(hMcbsp, (reg<<9) | val);
 }
 
 /*
@@ -35,7 +43,7 @@ enum aic23_register_map {
 /*
  * McBSP0 config interface for aic23
  */
-MCBSP_Config MCBSP0_config = {
+static MCBSP_Config MCBSP0_config = {
 	/* Serial Port Control Register (SPCR) */
 	MCBSP_SPCR_RMK(
 		MCBSP_SPCR_FREE_NO,
@@ -104,7 +112,7 @@ MCBSP_Config MCBSP0_config = {
 /*
  * McBSP1 data interface for aic23
  */
-MCBSP_Config MCBSP1_config = {
+static MCBSP_Config MCBSP1_config = {
 	/* Serial Port Control Register (SPCR) */
 	MCBSP_SPCR_RMK(
 		MCBSP_SPCR_FREE_NO,
@@ -130,8 +138,8 @@ MCBSP_Config MCBSP1_config = {
 		MCBSP_RCR_RCOMPAND_MSB,
 		MCBSP_RCR_RFIG_NO,
 		MCBSP_RCR_RDATDLY_0BIT,
-		MCBSP_RCR_RFRLEN1_OF(0),		// receive frame length
-		MCBSP_RCR_RWDLEN1_32BIT,		// receive word length
+		MCBSP_RCR_RFRLEN1_OF(1),		// receive frame length
+		MCBSP_RCR_RWDLEN1_16BIT,		// receive word length
 		MCBSP_RCR_RWDREVRS_DISABLE),
 
 	/* Transmit Control Register (TCR) */
@@ -143,7 +151,7 @@ MCBSP_Config MCBSP1_config = {
 		MCBSP_XCR_XFIG_NO,
 		MCBSP_XCR_XDATDLY_0BIT,
 		MCBSP_XCR_XFRLEN1_OF(1),		// transmit frame length
-		MCBSP_XCR_XWDLEN1_32BIT,		// transmit word length
+		MCBSP_XCR_XWDLEN1_16BIT,		// transmit word length
 		MCBSP_XCR_XWDREVRS_DISABLE),
 
 	/* Sample Rate Generator Register */
@@ -172,24 +180,24 @@ MCBSP_Config MCBSP1_config = {
 };
 
 /*
- * EDMA RX Channel config
+ * EDMA Rcv Channel config
  */
-EDMA_Config EDMA_RX_config = {
+EDMA_Config gEdmaRcvConfig = {
 	EDMA_OPT_RMK(
 		EDMA_OPT_PRI_LOW,
 		EDMA_OPT_ESIZE_32BIT,
 		EDMA_OPT_2DS_NO,
-		EDMA_OPT_SUM_NONE,			// no source address update
+		EDMA_OPT_SUM_NONE,				// no source address update
 		EDMA_OPT_2DD_NO,
-		EDMA_OPT_DUM_INC,			// increment destination address
-		EDMA_OPT_TCINT_YES,			// Source address update mode
+		EDMA_OPT_DUM_INC,				// increment destination address
+		EDMA_OPT_TCINT_YES,				// Source address update mode
 		EDMA_OPT_TCC_DEFAULT,
-		EDMA_OPT_LINK_DEFAULT,
-		EDMA_OPT_FS_NO),			// Frame synchronisation
+		EDMA_OPT_LINK_YES,
+		EDMA_OPT_FS_NO),				// Frame synchronisation, we copy element by element
 	EDMA_SRC_OF(0x00000000),			// EDMA Channel Source Address
 	EDMA_CNT_RMK(0, 108),				// Frame count (FRMCNT), Element count (FRMCNT)
-	EDMA_DST_OF((Uint32)&buffer_IN_A),			// EDMA Channel Destination Address
-	EDMA_IDX_RMK(0x0000, 0x0004),		// Frame index, Element index
+	EDMA_DST_OF((Uint32) &gRcvBufferA),	// EDMA Channel Destination Address
+	EDMA_IDX_RMK(0x0000, 0x0000),		// Frame index, Element index
 	EDMA_RLD_RMK(0x0000, 0x0000)		// Element count reload, Link address
 };
 
@@ -197,17 +205,14 @@ EDMA_Config EDMA_RX_config = {
  *
  */
 void DSK6713_configure_AIC23() {
-	Uint32 receiveAddr;
-
 	/* Configure McBSP0 as control interface for aic23 */
 	MCBSP_Handle MCBSP0_handle;
 	MCBSP0_handle = MCBSP_open(MCBSP_DEV0, MCBSP_OPEN_RESET);
 	MCBSP_config(MCBSP0_handle, &MCBSP0_config);
-	MCBSP_start(MCBSP0_handle, MCBSP_XMIT_START, 0xffffffff);
+	MCBSP_start(MCBSP0_handle, MCBSP_XMIT_START | MCBSP_SRGR_START, 220);
 
 	set_aic23_register(MCBSP0_handle, RESET_REGISTER, 0x0000);
 	set_aic23_register(MCBSP0_handle, POWER_DOWN_CONTROL, 0x0000);
-
 	set_aic23_register(MCBSP0_handle, LEFT_LINE_INPUT_CHANNEL_VOLUME, 0x0017);
 	set_aic23_register(MCBSP0_handle, RIGHT_LINE_INPUT_CHANNEL_VOLUME, 0x0017);
 	set_aic23_register(MCBSP0_handle, LEFT_CHANNEL_HEADPHONE_VOLUME, 0x00f9);
@@ -222,17 +227,57 @@ void DSK6713_configure_AIC23() {
 	MCBSP_Handle MCBSP1_handle;
 	MCBSP1_handle = MCBSP_open(MCBSP_DEV1, MCBSP_OPEN_RESET);
 	MCBSP_config(MCBSP1_handle, &MCBSP1_config);
-	MCBSP_start(MCBSP1_handle, MCBSP_XMIT_START, 0xffffffff);
-	receiveAddr = MCBSP_getRcvAddr(MCBSP1_handle);		// Get address of DRR
 
 	/* Configure EDMA */
-	EDMA_Handle EDMA_RX_handle;
-	EDMA_RX_handle = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
-	EDMA_RX_config.src = receiveAddr;
-	EDMA_config(EDMA_RX_handle, &EDMA_RX_config);
-	EDMA_enableChannel(EDMA_RX_handle);
+	EDMA_Handle hEdmaRcv;
+	EDMA_Handle hEdmaRcvA;
+	EDMA_Handle hEdmaRcvB;
 
-	IRQ_reset(IRQ_EVT_EDMAINT);
-	IRQ_disable(IRQ_EVT_EDMAINT);
-	EDMA_intEnable(EDMA_CHA_REVT1);
+	hEdmaRcv = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
+	hEdmaRcvA = EDMA_allocTable(-1);
+	hEdmaRcvB = EDMA_allocTable(-1);
+
+	gEdmaRcvConfig.src = MCBSP_getRcvAddr(MCBSP1_handle);		// Get address of DRR
+	gTccRcvChan = EDMA_intAlloc(-1);							// get next free transfer complete code
+	gEdmaRcvConfig.opt |= EDMA_FMK(OPT, TCC, gTccRcvChan);
+	EDMA_config(hEdmaRcv, &gEdmaRcvConfig);
+	EDMA_config(hEdmaRcvA, &gEdmaRcvConfig);
+	gEdmaRcvConfig.dst = EDMA_DST_OF(gRcvBufferA);
+	EDMA_config(hEdmaRcvB, &gEdmaRcvConfig);
+
+	EDMA_link(hEdmaRcv, hEdmaRcvA);
+	EDMA_link(hEdmaRcvA, hEdmaRcvB);
+	EDMA_link(hEdmaRcvB, hEdmaRcvA);
+
+	EDMA_intClear(gTccRcvChan);
+	EDMA_intEnable(gTccRcvChan);
+
+	EDMA_enableChannel(hEdmaRcv);
+
+	IRQ_clear(IRQ_EVT_EDMAINT);
+	IRQ_enable(IRQ_EVT_EDMAINT);
+
+	MCBSP_start(MCBSP1_handle, MCBSP_XMIT_START|MCBSP_RCV_START|MCBSP_SRGR_FRAMESYNC, 220);
+
+	/* debug helper: */
+	Uint32 rrdy = MCBSP_FGETH(MCBSP1_handle,SPCR,RRDY);
+
+	// while rrdy=0 => nothing received
+	while(!rrdy) {
+		rrdy = MCBSP_FGETH(MCBSP1_handle, SPCR, RRDY);
+	}
+
+	rrdy = MCBSP_FGETH(MCBSP1_handle,SPCR,RRDY);
+	// while rrdy=1 => DR register was not read by EDMA
+	while(rrdy) {
+		rrdy = MCBSP_FGETH(MCBSP1_handle,SPCR,RRDY);
+	}
+}
+
+void EDMA_service_routine() {
+	if (EDMA_intTest(gTccRcvChan)) {
+		EDMA_intClear(gTccRcvChan);
+		/* start software interrupt to process buffer */
+
+	}
 }
