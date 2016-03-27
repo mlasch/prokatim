@@ -4,14 +4,22 @@
 #include <csl_mcbsp.h>
 #include <csl_edma.h>
 
+#include <std.h>
 #include <log.h>
+#include <swi.h>
+
+#include "process_data.h"
+#include "config_audio_codec.h"
+
+
+extern LOG_Obj LOG0;
+extern far SWI_Obj processDataSwi;
 
 Uint32 gRcvBufferA[108];
 Uint32 gRcvBufferB[108];
+Uint32 *gCurrentBuffer;
 
 Int8 gTccRcvChan;
-
-extern LOG_Obj LOG0;
 
 /*
  * Helper function to write aic23 registers
@@ -229,30 +237,30 @@ void DSK6713_configure_AIC23() {
 	MCBSP_config(MCBSP1_handle, &MCBSP1_config);
 
 	/* Configure EDMA */
-	EDMA_Handle hEdmaRcv;
 	EDMA_Handle hEdmaRcvA;
+	//EDMA_Handle hEdmaRcvA;
 	EDMA_Handle hEdmaRcvB;
 
-	hEdmaRcv = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
-	hEdmaRcvA = EDMA_allocTable(-1);
+	hEdmaRcvA = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
+	//hEdmaRcvA = EDMA_allocTable(-1);
 	hEdmaRcvB = EDMA_allocTable(-1);
 
 	gEdmaRcvConfig.src = MCBSP_getRcvAddr(MCBSP1_handle);		// Get address of DRR
 	gTccRcvChan = EDMA_intAlloc(-1);							// get next free transfer complete code
 	gEdmaRcvConfig.opt |= EDMA_FMK(OPT, TCC, gTccRcvChan);
-	EDMA_config(hEdmaRcv, &gEdmaRcvConfig);
 	EDMA_config(hEdmaRcvA, &gEdmaRcvConfig);
+	//EDMA_config(hEdmaRcvA, &gEdmaRcvConfig);
 	gEdmaRcvConfig.dst = EDMA_DST_OF(gRcvBufferA);
 	EDMA_config(hEdmaRcvB, &gEdmaRcvConfig);
 
-	EDMA_link(hEdmaRcv, hEdmaRcvA);
+	//EDMA_link(hEdmaRcv, hEdmaRcvA);
 	EDMA_link(hEdmaRcvA, hEdmaRcvB);
 	EDMA_link(hEdmaRcvB, hEdmaRcvA);
 
 	EDMA_intClear(gTccRcvChan);
 	EDMA_intEnable(gTccRcvChan);
 
-	EDMA_enableChannel(hEdmaRcv);
+	EDMA_enableChannel(hEdmaRcvA);
 
 	IRQ_clear(IRQ_EVT_EDMAINT);
 	IRQ_enable(IRQ_EVT_EDMAINT);
@@ -278,6 +286,6 @@ void EDMA_service_routine() {
 	if (EDMA_intTest(gTccRcvChan)) {
 		EDMA_intClear(gTccRcvChan);
 		/* start software interrupt to process buffer */
-
+		SWI_or(&processDataSwi, 0x00);
 	}
 }

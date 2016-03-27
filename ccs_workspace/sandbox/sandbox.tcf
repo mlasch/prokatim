@@ -38,6 +38,9 @@ bios.MEM.instance("MEM0").destroy();
 bios.HWI.instance("HWI_INT8").fxn = prog.extern("EDMA_service_routine");
 bios.SWI.instance("SWI0").destroy();
 bios.HWI.instance("HWI_INT8").useDispatcher = 1;
+bios.SWI.create("processDataSwi");
+bios.SWI.instance("processDataSwi").order = 3;
+bios.SWI.instance("processDataSwi").fxn = prog.extern("processData");
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

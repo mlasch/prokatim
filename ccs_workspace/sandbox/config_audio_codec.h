@@ -8,6 +8,12 @@
 #ifndef CONFIG_AUDIO_CODEC_H_
 #define CONFIG_AUDIO_CODEC_H_
 
+enum {
+	BufferA, BufferB
+};
+
+
+
 void DSK6713_configure_AIC23(void);
 
 #endif /* CONFIG_AUDIO_CODEC_H_ */
