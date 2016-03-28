@@ -4,22 +4,35 @@
 #include <csl_mcbsp.h>
 #include <csl_edma.h>
 
+#include <dsk6713.h>
+#include <dsk6713_aic23.h>
+
 #include <std.h>
 #include <log.h>
 #include <swi.h>
 
-#include "process_data.h"
 #include "config_audio_codec.h"
 
-
+/*
+ * DSP BIOS
+ */
 extern LOG_Obj LOG0;
 extern far SWI_Obj processDataSwi;
 
+/*
+ * Buffers
+ */
 Uint32 gRcvBufferA[108];
 Uint32 gRcvBufferB[108];
-Uint32 *gCurrentBuffer;
+Uint32 gXmtBufferA[108];
+Uint32 gXmtBufferB[108];
 
-Int8 gTccRcvChan;
+BufferStateTypeDef gBufferState;
+
+Uint8 gTccRcvChan;
+Uint8 gTccXmtChan;
+
+Uint16 rcv = 0, xmt = 0;
 
 /*
  * Helper function to write aic23 registers
@@ -29,24 +42,8 @@ static void set_aic23_register(MCBSP_Handle hMcbsp, Uint16 reg, Uint16 val) {
 	//LOG_printf(&LOG0, "Transmit data: %d", (reg<<9) | val);
 	while(!MCBSP_xrdy(hMcbsp));
 	MCBSP_write(hMcbsp, (reg<<9) | val);
+	while (MCBSP_xrdy(hMcbsp));
 }
-
-/*
- * aic23 register map
- */
-enum aic23_register_map {
-	LEFT_LINE_INPUT_CHANNEL_VOLUME,
-	RIGHT_LINE_INPUT_CHANNEL_VOLUME,
-	LEFT_CHANNEL_HEADPHONE_VOLUME,
-	RIGHT_CHANNEL_HEADPHONE_VOLUME,
-	ANALOG_AUDIO_PATH,
-	DIGITAL_AUDIO_PATH,
-	POWER_DOWN_CONTROL,
-	DIGITAL_AUDIO_INTERFACE_FORMAT,
-	SAMPLE_RATE_CONTROL,
-	DIGITAL_INTERFACE_ACTIVATION,
-	RESET_REGISTER
-};
 
 /*
  * McBSP0 config interface for aic23
@@ -60,7 +57,7 @@ static MCBSP_Config MCBSP0_config = {
 		MCBSP_SPCR_GRST_YES,
 		MCBSP_SPCR_XINTM_XRDY,
 		MCBSP_SPCR_XSYNCERR_NO,
-		MCBSP_SPCR_XRST_YES,		// Serial port transmitter is enabled
+		MCBSP_SPCR_XRST_YES,		// Serial port reset state
 		MCBSP_SPCR_DLB_OFF,
 		MCBSP_SPCR_RJUST_RZF,
 		MCBSP_SPCR_CLKSTP_NODELAY,
@@ -146,20 +143,20 @@ static MCBSP_Config MCBSP1_config = {
 		MCBSP_RCR_RCOMPAND_MSB,
 		MCBSP_RCR_RFIG_NO,
 		MCBSP_RCR_RDATDLY_0BIT,
-		MCBSP_RCR_RFRLEN1_OF(1),		// receive frame length
-		MCBSP_RCR_RWDLEN1_16BIT,		// receive word length
+		MCBSP_RCR_RFRLEN1_OF(0),		// receive frame length
+		MCBSP_RCR_RWDLEN1_32BIT,		// receive word length
 		MCBSP_RCR_RWDREVRS_DISABLE),
 
 	/* Transmit Control Register (TCR) */
 	MCBSP_XCR_RMK(
 		MCBSP_XCR_XPHASE_SINGLE,
 		MCBSP_XCR_XFRLEN2_DEFAULT,
-		MCBSP_XCR_XWDLEN1_DEFAULT,
+		MCBSP_XCR_XWDLEN2_DEFAULT,
 		MCBSP_XCR_XCOMPAND_MSB,
 		MCBSP_XCR_XFIG_NO,
 		MCBSP_XCR_XDATDLY_0BIT,
-		MCBSP_XCR_XFRLEN1_OF(1),		// transmit frame length
-		MCBSP_XCR_XWDLEN1_16BIT,		// transmit word length
+		MCBSP_XCR_XFRLEN1_OF(0),		// transmit frame length
+		MCBSP_XCR_XWDLEN1_32BIT,		// transmit word length
 		MCBSP_XCR_XWDREVRS_DISABLE),
 
 	/* Sample Rate Generator Register */
@@ -188,7 +185,7 @@ static MCBSP_Config MCBSP1_config = {
 };
 
 /*
- * EDMA Rcv Channel config
+ * EDMA receive channel config
  */
 EDMA_Config gEdmaRcvConfig = {
 	EDMA_OPT_RMK(
@@ -205,19 +202,42 @@ EDMA_Config gEdmaRcvConfig = {
 	EDMA_SRC_OF(0x00000000),			// EDMA Channel Source Address
 	EDMA_CNT_RMK(0, 108),				// Frame count (FRMCNT), Element count (FRMCNT)
 	EDMA_DST_OF((Uint32) &gRcvBufferA),	// EDMA Channel Destination Address
-	EDMA_IDX_RMK(0x0000, 0x0000),		// Frame index, Element index
+	EDMA_IDX_RMK(EDMA_IDX_FRMIDX_DEFAULT, EDMA_IDX_ELEIDX_DEFAULT),		// Frame index, Element index
+	EDMA_RLD_RMK(0x0000, 0x0000)		// Element count reload, Link address
+};
+
+/*
+ * EDMA transmit channel config
+ */
+EDMA_Config gEdmaXmtConfig = {
+	EDMA_OPT_RMK(
+		EDMA_OPT_PRI_LOW,
+		EDMA_OPT_ESIZE_32BIT,
+		EDMA_OPT_2DS_NO,
+		EDMA_OPT_SUM_INC,				// increment source address
+		EDMA_OPT_2DD_NO,
+		EDMA_OPT_DUM_NONE,				// don't update destination (TDR)
+		EDMA_OPT_TCINT_YES,				// Source address update mode
+		EDMA_OPT_TCC_DEFAULT,
+		EDMA_OPT_LINK_YES,
+		EDMA_OPT_FS_NO),				// Frame synchronisation, we copy element by element
+	(Uint32) &gXmtBufferA,			// EDMA Channel Source Address
+	EDMA_CNT_RMK(0, 108),				// Frame count (FRMCNT), Element count (FRMCNT)
+	EDMA_DST_OF(0x00000000),			// EDMA Channel Destination Address
+	EDMA_IDX_RMK(EDMA_IDX_FRMIDX_DEFAULT, EDMA_IDX_ELEIDX_DEFAULT),		// Frame index, Element index
 	EDMA_RLD_RMK(0x0000, 0x0000)		// Element count reload, Link address
 };
 
 /*
  *
  */
-void DSK6713_configure_AIC23() {
+Uint16 DSK6713_configure_AIC23() {
 	/* Configure McBSP0 as control interface for aic23 */
 	MCBSP_Handle MCBSP0_handle;
 	MCBSP0_handle = MCBSP_open(MCBSP_DEV0, MCBSP_OPEN_RESET);
+
 	MCBSP_config(MCBSP0_handle, &MCBSP0_config);
-	MCBSP_start(MCBSP0_handle, MCBSP_XMIT_START | MCBSP_SRGR_START, 220);
+	MCBSP_start(MCBSP0_handle, MCBSP_XMIT_START | MCBSP_SRGR_START | MCBSP_SRGR_START, 220);
 
 	set_aic23_register(MCBSP0_handle, RESET_REGISTER, 0x0000);
 	set_aic23_register(MCBSP0_handle, POWER_DOWN_CONTROL, 0x0000);
@@ -225,67 +245,96 @@ void DSK6713_configure_AIC23() {
 	set_aic23_register(MCBSP0_handle, RIGHT_LINE_INPUT_CHANNEL_VOLUME, 0x0017);
 	set_aic23_register(MCBSP0_handle, LEFT_CHANNEL_HEADPHONE_VOLUME, 0x00f9);
 	set_aic23_register(MCBSP0_handle, RIGHT_CHANNEL_HEADPHONE_VOLUME, 0x00f9);
-	set_aic23_register(MCBSP0_handle, ANALOG_AUDIO_PATH, 0x0012);
-	set_aic23_register(MCBSP0_handle, DIGITAL_AUDIO_PATH, 0x0000);
-	set_aic23_register(MCBSP0_handle, DIGITAL_AUDIO_INTERFACE_FORMAT, 0x0041);
-	set_aic23_register(MCBSP0_handle, SAMPLE_RATE_CONTROL, 0x000d);
+	set_aic23_register(MCBSP0_handle, ANALOG_AUDIO_PATH, 0x0011);			// 00001 0010
+	set_aic23_register(MCBSP0_handle, DIGITAL_AUDIO_PATH, 0x0000);			// 000000000
+	set_aic23_register(MCBSP0_handle, DIGITAL_AUDIO_INTERFACE_FORMAT, 0x0043);	//0 0100 0001
+	set_aic23_register(MCBSP0_handle, SAMPLE_RATE_CONTROL, 0x000d);		// 01100
 	set_aic23_register(MCBSP0_handle, DIGITAL_INTERFACE_ACTIVATION, 0x0001);
 
 	/* Configure McBSP1 as data interface for aic23 */
 	MCBSP_Handle MCBSP1_handle;
 	MCBSP1_handle = MCBSP_open(MCBSP_DEV1, MCBSP_OPEN_RESET);
+
 	MCBSP_config(MCBSP1_handle, &MCBSP1_config);
 
-	/* Configure EDMA */
+	MCBSP_start(MCBSP1_handle, MCBSP_XMIT_START|MCBSP_RCV_START|MCBSP_SRGR_FRAMESYNC|MCBSP_SRGR_START, 220);
+
+	/* Configure rcv EDMA */
+	EDMA_Handle hEdmaRcv;
 	EDMA_Handle hEdmaRcvA;
-	//EDMA_Handle hEdmaRcvA;
 	EDMA_Handle hEdmaRcvB;
 
-	hEdmaRcvA = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
-	//hEdmaRcvA = EDMA_allocTable(-1);
+	hEdmaRcv = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
+	hEdmaRcvA = EDMA_allocTable(-1);
 	hEdmaRcvB = EDMA_allocTable(-1);
 
 	gEdmaRcvConfig.src = MCBSP_getRcvAddr(MCBSP1_handle);		// Get address of DRR
 	gTccRcvChan = EDMA_intAlloc(-1);							// get next free transfer complete code
 	gEdmaRcvConfig.opt |= EDMA_FMK(OPT, TCC, gTccRcvChan);
+	EDMA_config(hEdmaRcv, &gEdmaRcvConfig);
 	EDMA_config(hEdmaRcvA, &gEdmaRcvConfig);
-	//EDMA_config(hEdmaRcvA, &gEdmaRcvConfig);
-	gEdmaRcvConfig.dst = EDMA_DST_OF(gRcvBufferA);
+	gEdmaRcvConfig.dst = EDMA_DST_OF(gRcvBufferB);
 	EDMA_config(hEdmaRcvB, &gEdmaRcvConfig);
 
-	//EDMA_link(hEdmaRcv, hEdmaRcvA);
-	EDMA_link(hEdmaRcvA, hEdmaRcvB);
+	EDMA_link(hEdmaRcv, hEdmaRcvB);
 	EDMA_link(hEdmaRcvB, hEdmaRcvA);
+	EDMA_link(hEdmaRcvA, hEdmaRcvB);
+
+
+	/* Configure xmt EDMA */
+	EDMA_Handle hEdmaXmt;
+	EDMA_Handle hEdmaXmtA;
+	EDMA_Handle hEdmaXmtB;
+
+	hEdmaXmt = EDMA_open(EDMA_CHA_XEVT1, EDMA_OPEN_RESET);
+	hEdmaXmtA = EDMA_allocTable(-1);
+	hEdmaXmtB = EDMA_allocTable(-1);
+
+	gEdmaXmtConfig.dst = MCBSP_getXmtAddr(MCBSP1_handle);		// Get address of DXR
+	gTccXmtChan = EDMA_intAlloc(-1);							// get next free transfer complete code
+	gEdmaXmtConfig.opt |= EDMA_FMK(OPT, TCC, gTccXmtChan);
+	EDMA_config(hEdmaXmt, &gEdmaXmtConfig);
+	EDMA_config(hEdmaXmtA, &gEdmaXmtConfig);
+	gEdmaXmtConfig.src = EDMA_DST_OF(gXmtBufferB);				// set source to buffer B
+	EDMA_config(hEdmaXmtB, &gEdmaXmtConfig);
+
+	EDMA_link(hEdmaXmt, hEdmaXmtB);
+	EDMA_link(hEdmaXmtB, hEdmaXmtA);
+	EDMA_link(hEdmaXmtA, hEdmaXmtB);
+
 
 	EDMA_intClear(gTccRcvChan);
+	EDMA_intClear(gTccXmtChan);
 	EDMA_intEnable(gTccRcvChan);
+	EDMA_intEnable(gTccXmtChan);
 
-	EDMA_enableChannel(hEdmaRcvA);
+	gBufferState.cpuBufferState = StateB;		// inittial cpu buffer state
+
+	EDMA_enableChannel(hEdmaRcv);
+	EDMA_enableChannel(hEdmaXmt);
 
 	IRQ_clear(IRQ_EVT_EDMAINT);
 	IRQ_enable(IRQ_EVT_EDMAINT);
 
-	MCBSP_start(MCBSP1_handle, MCBSP_XMIT_START|MCBSP_RCV_START|MCBSP_SRGR_FRAMESYNC, 220);
-
-	/* debug helper: */
-	Uint32 rrdy = MCBSP_FGETH(MCBSP1_handle,SPCR,RRDY);
-
-	// while rrdy=0 => nothing received
-	while(!rrdy) {
-		rrdy = MCBSP_FGETH(MCBSP1_handle, SPCR, RRDY);
-	}
-
-	rrdy = MCBSP_FGETH(MCBSP1_handle,SPCR,RRDY);
-	// while rrdy=1 => DR register was not read by EDMA
-	while(rrdy) {
-		rrdy = MCBSP_FGETH(MCBSP1_handle,SPCR,RRDY);
-	}
+	MCBSP_write(MCBSP1_handle, 0x00);
 }
 
 void EDMA_service_routine() {
 	if (EDMA_intTest(gTccRcvChan)) {
 		EDMA_intClear(gTccRcvChan);
 		/* start software interrupt to process buffer */
+		rcv = 1;
+	}
+	if (EDMA_intTest(gTccXmtChan)) {
+		EDMA_intClear(gTccXmtChan);
+		/* start software interrupt to process buffer */
+		xmt = 1;
+	}
+
+	if (xmt && rcv) {
 		SWI_or(&processDataSwi, 0x00);
+		rcv = 0;
+		xmt = 0;
+
 	}
 }

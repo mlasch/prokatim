@@ -1,5 +1,6 @@
 /*
  * main.c
+ * 		Author: mlasch@mailbox.org
  */
 
 #include <sandboxcfg.h>
@@ -11,12 +12,7 @@
 
 #include "config_audio_codec.h"
 
-
-volatile Uint32 cnt;
-
 int main(void) {
-	cnt = 0;
-
 	CSL_init();
 
 	DSK6713_init();
