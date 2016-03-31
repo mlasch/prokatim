@@ -24,6 +24,7 @@
 #define RESET_REGISTER						15
 
 #define BUFFER_SIZE 108;
+#define SAMPLE_RATE 8000;
 
 enum {
 	StateA, StateB
@@ -35,6 +36,6 @@ typedef struct {
 	Uint32 cpuBufferState;
 } BufferStateTypeDef;
 
-Uint16 DSK6713_configure_AIC23(void);
+void DSK6713_configure_AIC23(void);
 
 #endif /* CONFIG_AUDIO_CODEC_H_ */

@@ -11,6 +11,7 @@
 #include <swi.h>
 
 #include "process_data.h"
+#include "dsp/dsp_goertzel.h"
 
 /*
  * SWI
@@ -39,9 +40,10 @@ void processData() {
 
 	/* Demo application: swap left-right channel and loop through*/
 	for (index=0;index<108;index++) {
+		float param_770;
 
 		gBufferState.cpuXmtBufferPtr[index] = gBufferState.cpuRcvBufferPtr[index] & 0xffff;
-		//gBufferState.cpuXmtBufferPtr[index] = (Uint32)((left<<16)|right);
-		//gBufferState.cpuXmtBufferPtr[index] = (Uint32)((right<<16)|left);
+
+		param_770 = goertzel(gBufferState.cpuRcvBufferPtr, 108, 8000, 770);
 	}
 }

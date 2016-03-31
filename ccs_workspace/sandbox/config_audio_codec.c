@@ -32,7 +32,7 @@ BufferStateTypeDef gBufferState;
 Uint8 gTccRcvChan;
 Uint8 gTccXmtChan;
 
-Uint16 rcv = 0, xmt = 0;
+Uint16 gRcvFlag = 0, gXmtFlag = 0;
 
 /*
  * Helper function to write aic23 registers
@@ -231,7 +231,7 @@ EDMA_Config gEdmaXmtConfig = {
 /*
  *
  */
-Uint16 DSK6713_configure_AIC23() {
+void DSK6713_configure_AIC23() {
 	/* Configure McBSP0 as control interface for aic23 */
 	MCBSP_Handle MCBSP0_handle;
 	MCBSP0_handle = MCBSP_open(MCBSP_DEV0, MCBSP_OPEN_RESET);
@@ -254,12 +254,10 @@ Uint16 DSK6713_configure_AIC23() {
 	/* Configure McBSP1 as data interface for aic23 */
 	MCBSP_Handle MCBSP1_handle;
 	MCBSP1_handle = MCBSP_open(MCBSP_DEV1, MCBSP_OPEN_RESET);
-
 	MCBSP_config(MCBSP1_handle, &MCBSP1_config);
-
 	MCBSP_start(MCBSP1_handle, MCBSP_XMIT_START|MCBSP_RCV_START|MCBSP_SRGR_FRAMESYNC|MCBSP_SRGR_START, 220);
 
-	/* Configure rcv EDMA */
+	/* Configure receive EDMA */
 	EDMA_Handle hEdmaRcv;
 	EDMA_Handle hEdmaRcvA;
 	EDMA_Handle hEdmaRcvB;
@@ -280,8 +278,7 @@ Uint16 DSK6713_configure_AIC23() {
 	EDMA_link(hEdmaRcvB, hEdmaRcvA);
 	EDMA_link(hEdmaRcvA, hEdmaRcvB);
 
-
-	/* Configure xmt EDMA */
+	/* Configure transmit EDMA */
 	EDMA_Handle hEdmaXmt;
 	EDMA_Handle hEdmaXmtA;
 	EDMA_Handle hEdmaXmtB;
@@ -323,18 +320,18 @@ void EDMA_service_routine() {
 	if (EDMA_intTest(gTccRcvChan)) {
 		EDMA_intClear(gTccRcvChan);
 		/* start software interrupt to process buffer */
-		rcv = 1;
+		gRcvFlag = 1;
 	}
 	if (EDMA_intTest(gTccXmtChan)) {
 		EDMA_intClear(gTccXmtChan);
 		/* start software interrupt to process buffer */
-		xmt = 1;
+		gXmtFlag = 1;
 	}
 
-	if (xmt && rcv) {
+	if (gXmtFlag && gRcvFlag) {
 		SWI_or(&processDataSwi, 0x00);
-		rcv = 0;
-		xmt = 0;
+		gRcvFlag = 0;
+		gXmtFlag = 0;
 
 	}
 }
