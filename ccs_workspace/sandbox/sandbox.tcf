@@ -41,6 +41,27 @@ bios.HWI.instance("HWI_INT8").useDispatcher = 1;
 bios.SWI.create("processDataSwi");
 bios.SWI.instance("processDataSwi").order = 3;
 bios.SWI.instance("processDataSwi").fxn = prog.extern("processData");
+bios.TSK.create("TSK0");
+bios.TSK.instance("TSK0").order = 2;
+bios.TSK.instance("TSK0").fxn = prog.extern("dtmf_task");
+bios.TSK.instance("TSK0").comment = "Task to handle dtmf state machine";
+bios.TSK.instance("TSK0").destroy();
+bios.TSK.create("dtmf_task");
+bios.TSK.instance("dtmf_task").order = 3;
+bios.TSK.instance("dtmf_task").comment = "Task to handle dtmf state machine";
+bios.TSK.instance("dtmf_task").fxn = prog.extern("dtmf_task");
+bios.TSK.instance("dtmf_task").fxn = prog.extern("dtmfTask");
+bios.SEM.create("SEM_NewDtmfData");
+bios.TSK.instance("dtmf_task").destroy();
+bios.TSK.create("TSK_dtmf");
+bios.TSK.instance("TSK_dtmf").order = 3;
+bios.TSK.instance("TSK_dtmf").fxn = prog.extern("dtmfTask");
+bios.TSK.instance("TSK_dtmf").comment = "Task to handle dtmf state machine";
+bios.SWI.instance("processDataSwi").destroy();
+bios.SWI.create("SWI_process_data");
+bios.SWI.instance("SWI_process_data").order = 4;
+bios.SWI.instance("SWI_process_data").fxn = prog.extern("processData");
+bios.TSK.instance("TSK_dtmf").priority = 10;
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

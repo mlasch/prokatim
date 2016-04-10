@@ -8,14 +8,25 @@
 #ifndef PROCESS_DATA_H_
 #define PROCESS_DATA_H_
 
-#include "config_audio_codec.h"
+enum {
+	StateA, StateB
+};
+
+typedef struct {
+	Uint32 *cpuRcvBufferPtr;
+	Uint32 *cpuXmtBufferPtr;
+	Uint32 cpuBufferState;
+} BufferStateTypeDef;
+
+extern BufferStateTypeDef gBufferState;
 
 extern Uint32 gRcvBufferA[];
 extern Uint32 gRcvBufferB[];
 extern Uint32 gXmtBufferA[];
 extern Uint32 gXmtBufferB[];
 
-extern BufferStateTypeDef gBufferState;
+extern Int16 rightChannel[];
+extern Int16 leftChannel[];
 
 void processData(void);
 

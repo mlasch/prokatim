@@ -62,7 +62,7 @@
 								<option id="com.ti.ccstudio.buildDefinitions.C6000_7.4.linkerID.MAP_FILE.1887090894" name="Input and output sections listed into &lt;file&gt; (--map_file, -m)" superClass="com.ti.ccstudio.buildDefinitions.C6000_7.4.linkerID.MAP_FILE" value="&quot;${ProjName}.map&quot;" valueType="string"/>
 								<option id="com.ti.ccstudio.buildDefinitions.C6000_7.4.linkerID.LIBRARY.873510144" name="Include library file or command file as input (--library, -l)" superClass="com.ti.ccstudio.buildDefinitions.C6000_7.4.linkerID.LIBRARY" valueType="libs">
 									<listOptionValue builtIn="false" value="&quot;libc.a&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\ti\c67xmathlib_2_01_00_00\lib\c67pfastMath.lib&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\ti\c67xmathlib_2_01_00_00\lib\c67xfastMath.lib&quot;"/>
 									<listOptionValue builtIn="false" value="dsk6713bsl.lib"/>
 									<listOptionValue builtIn="false" value="csl6713.lib&quot;"/>
 								</option>

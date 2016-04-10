@@ -7,17 +7,10 @@
 #include <dsk6713.h>
 #include <dsk6713_aic23.h>
 
-#include <std.h>
-#include <log.h>
-#include <swi.h>
+#include <sandboxcfg.h>		// includes all the necessary stuff for dsp bios
 
+#include "process_data.h"
 #include "config_audio_codec.h"
-
-/*
- * DSP BIOS
- */
-extern LOG_Obj LOG0;
-extern far SWI_Obj processDataSwi;
 
 /*
  * Buffers
@@ -329,7 +322,7 @@ void EDMA_service_routine() {
 	}
 
 	if (gXmtFlag && gRcvFlag) {
-		SWI_or(&processDataSwi, 0x00);
+		SWI_or(&SWI_process_data, 0x00);
 		gRcvFlag = 0;
 		gXmtFlag = 0;
 

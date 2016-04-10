@@ -3,7 +3,7 @@
  * 		Author: mlasch@mailbox.org
  */
 
-#include <sandboxcfg.h>
+#include <sandboxcfg.h>		// includes all the necessary stuff for dsp bios
 #include <csl.h>
 #include <csl_irq.h>
 
@@ -24,6 +24,7 @@ int main(void) {
 
 	IRQ_globalEnable();
 
+	/* switch all leds off */
 	DSK6713_LED_off(0);
 	DSK6713_LED_off(1);
 	DSK6713_LED_off(2);
@@ -31,5 +32,3 @@ int main(void) {
 
 	return 0;
 }
-
-
