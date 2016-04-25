@@ -62,6 +62,10 @@ bios.SWI.create("SWI_process_data");
 bios.SWI.instance("SWI_process_data").order = 4;
 bios.SWI.instance("SWI_process_data").fxn = prog.extern("processData");
 bios.TSK.instance("TSK_dtmf").priority = 10;
+bios.TSK.create("TSK_display");
+bios.TSK.instance("TSK_display").order = 4;
+bios.TSK.instance("TSK_display").fxn = prog.extern("display_task");
+bios.SEM.create("SEM_NewChar");
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

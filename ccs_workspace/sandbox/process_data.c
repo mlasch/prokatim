@@ -8,6 +8,7 @@
 #include <csl.h>
 
 #include <sandboxcfg.h>		// includes all the necessary stuff for dsp bios
+#include <c67fastMath.h>
 
 #include "config_audio_codec.h"
 #include "process_data.h"
@@ -54,14 +55,14 @@ void processData() {
 	}
 
 	/* generate parameters for dtmf on the right channel */
-	dtmfValue.freq_697 = goertzel(rightChannel, 108, 8000, 697);
-	dtmfValue.freq_770 = goertzel(rightChannel, 108, 8000, 770);
-	dtmfValue.freq_852 = goertzel(rightChannel, 108, 8000, 852);
-	dtmfValue.freq_941 = goertzel(rightChannel, 108, 8000, 941);
-	dtmfValue.freq_1209 = goertzel(rightChannel, 108, 8000, 1209);
-	dtmfValue.freq_1336 = goertzel(rightChannel, 108, 8000, 1336);
-	dtmfValue.freq_1477 = goertzel(rightChannel, 108, 8000, 1477);
-	dtmfValue.freq_noise = goertzel(rightChannel, 108, 8000, 2000);
+	dtmfValue.freq_697 = log2sp(goertzel(rightChannel, 108, 8000, 697));
+	dtmfValue.freq_770 = log2sp(goertzel(rightChannel, 108, 8000, 770));
+	dtmfValue.freq_852 = log2sp(goertzel(rightChannel, 108, 8000, 852));
+	dtmfValue.freq_941 = log2sp(goertzel(rightChannel, 108, 8000, 941));
+	dtmfValue.freq_1209 = log2sp(goertzel(rightChannel, 108, 8000, 1209));
+	dtmfValue.freq_1336 = log2sp(goertzel(rightChannel, 108, 8000, 1336));
+	dtmfValue.freq_1477 = log2sp(goertzel(rightChannel, 108, 8000, 1477));
+	dtmfValue.freq_noise = log2sp(goertzel(rightChannel, 108, 8000, 2000));
 
 	/* send message to dtmf_task */
 	SEM_postBinary(&SEM_NewDtmfData);

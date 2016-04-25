@@ -19,6 +19,9 @@ typedef struct {
 	float freq_noise;
 } dtmfValueTypeDef;
 
+#define LEVEL_FACTOR 2
+
 extern dtmfValueTypeDef dtmfValue;
+extern Uint8 gCurrentChar;
 
 #endif /* DTMF_H_ */
