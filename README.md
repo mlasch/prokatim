@@ -6,7 +6,7 @@ https://www.hs-karlsruhe.de/prokatim.html
 
 ## Project Goals
 
-The project goal is to detect dialed numbers with the dual-tone multi-frequency signaling (DTMF). The detection should be done with the Goertzel algorithm an a digital signal processor.
+The project goal is to detect dialed numbers with the dual-tone multi-frequency signaling (DTMF). The detection should be done with the Goertzel algorithm and a digital signal processor.
 
 ## References
 
