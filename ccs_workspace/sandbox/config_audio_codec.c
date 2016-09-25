@@ -11,21 +11,8 @@
 
 #include "process_data.h"
 #include "config_audio_codec.h"
+#include "globals.h"
 
-/*
- * Buffers
- */
-Uint32 gRcvBufferA[108];
-Uint32 gRcvBufferB[108];
-Uint32 gXmtBufferA[108];
-Uint32 gXmtBufferB[108];
-
-BufferStateTypeDef gBufferState;
-
-Uint8 gTccRcvChan;
-Uint8 gTccXmtChan;
-
-Uint16 gRcvFlag = 0, gXmtFlag = 0;
 
 /*
  * Helper function to write aic23 registers
@@ -307,24 +294,4 @@ void DSK6713_configure_AIC23() {
 	IRQ_enable(IRQ_EVT_EDMAINT);
 
 	MCBSP_write(MCBSP1_handle, 0x00);
-}
-
-void EDMA_service_routine() {
-	if (EDMA_intTest(gTccRcvChan)) {
-		EDMA_intClear(gTccRcvChan);
-		/* start software interrupt to process buffer */
-		gRcvFlag = 1;
-	}
-	if (EDMA_intTest(gTccXmtChan)) {
-		EDMA_intClear(gTccXmtChan);
-		/* start software interrupt to process buffer */
-		gXmtFlag = 1;
-	}
-
-	if (gXmtFlag && gRcvFlag) {
-		SWI_or(&SWI_process_data, 0x00);
-		gRcvFlag = 0;
-		gXmtFlag = 0;
-
-	}
 }

@@ -10,11 +10,14 @@
 #include <DSK6713.h>
 #include <DSK6713_led.h>
 
+#include <stdio.h>
+
 #include "config_audio_codec.h"
+#include "globals.h"
 
 int main(void) {
 	CSL_init();
-
+	globals_init();
 	DSK6713_init();
 	DSK6713_LED_init();
 
@@ -24,11 +27,21 @@ int main(void) {
 
 	IRQ_globalEnable();
 
-	/* switch all leds off */
+	/* switch all leds on */
 	DSK6713_LED_on(0);
 	DSK6713_LED_on(1);
 	DSK6713_LED_on(2);
 	DSK6713_LED_on(3);
+
+	gDigitList[0] = '0';
+	gDigitList[1] = '1';
+	gDigitList[2] = '2';
+	gDigitList[3] = '3';
+	gDigitList[4] = '4';
+	gDigitList[5] = '5';
+	gDigitList[6] = '6';
+	gDigitList[7] = '7';
+	gDigitList[8] = '\0';
 
 	return 0;
 }

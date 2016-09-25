@@ -8,6 +8,10 @@
 #ifndef PROCESS_DATA_H_
 #define PROCESS_DATA_H_
 
+#include <string.h>
+
+#define DTMF_LEN 7
+
 enum {
 	StateA, StateB
 };
@@ -18,16 +22,19 @@ typedef struct {
 	Uint32 cpuBufferState;
 } BufferStateTypeDef;
 
-extern BufferStateTypeDef gBufferState;
+typedef struct {
+	float freq_697;
+	float freq_770;
+	float freq_852;
+	float freq_941;
+	float freq_1209;
+	float freq_1336;
+	float freq_1477;
+	float freq_noise;
+} dtmfValueTypeDef;
 
-extern Uint32 gRcvBufferA[];
-extern Uint32 gRcvBufferB[];
-extern Uint32 gXmtBufferA[];
-extern Uint32 gXmtBufferB[];
-
-extern Int16 rightChannel[];
-extern Int16 leftChannel[];
+extern unsigned char dtmfDigits[4][3];
 
 void processData(void);
-
+void sort_freq(float*, float*, size_t length);
 #endif /* PROCESS_DATA_H_ */

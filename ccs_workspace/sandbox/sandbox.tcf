@@ -66,6 +66,8 @@ bios.TSK.create("TSK_display");
 bios.TSK.instance("TSK_display").order = 4;
 bios.TSK.instance("TSK_display").fxn = prog.extern("display_task");
 bios.SEM.create("SEM_NewChar");
+bios.TSK.instance("TSK_display").order = 2;
+bios.TSK.instance("TSK_dtmf").destroy();
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();
