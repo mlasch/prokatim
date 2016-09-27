@@ -33,15 +33,7 @@ int main(void) {
 	DSK6713_LED_on(2);
 	DSK6713_LED_on(3);
 
-	gDigitList[0] = '0';
-	gDigitList[1] = '1';
-	gDigitList[2] = '2';
-	gDigitList[3] = '3';
-	gDigitList[4] = '4';
-	gDigitList[5] = '5';
-	gDigitList[6] = '6';
-	gDigitList[7] = '7';
-	gDigitList[8] = '\0';
+	LOG_printf(&LOG0, "main finished\n");
 
 	return 0;
 }

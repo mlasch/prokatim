@@ -68,6 +68,10 @@ bios.TSK.instance("TSK_display").fxn = prog.extern("display_task");
 bios.SEM.create("SEM_NewChar");
 bios.TSK.instance("TSK_display").order = 2;
 bios.TSK.instance("TSK_dtmf").destroy();
+bios.PRD.create("PRD_digit_timer");
+bios.PRD.instance("PRD_digit_timer").order = 1;
+bios.PRD.instance("PRD_digit_timer").fxn = prog.extern("digit_timer");
+bios.PRD.instance("PRD_digit_timer").period = 10;
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

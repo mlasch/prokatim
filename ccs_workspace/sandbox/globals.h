@@ -13,7 +13,7 @@
 #define DIGIT_MAX 20
 
 extern unsigned char gDigitList[DIGIT_MAX];
-extern char gDigitMax;
+extern int gDigitIndex;
 
 extern BufferStateTypeDef gBufferState;
 
@@ -33,6 +33,7 @@ extern Uint16 gRcvFlag, gXmtFlag;
 extern dtmfValueTypeDef dftResult;
 
 extern unsigned char gNewDigit;
+extern int gNewDigitCounter;
 
 void globals_init();
 

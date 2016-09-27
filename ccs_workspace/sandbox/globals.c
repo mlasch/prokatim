@@ -14,7 +14,7 @@
  * DTMF string
  */
 unsigned char gDigitList[DIGIT_MAX];
-
+int gDigitIndex;
 /*
  * Buffers
  */
@@ -34,6 +34,9 @@ dtmfValueTypeDef dftResult;
 
 unsigned char gNewDigit;
 
+int gNewDigitCounter = 0;
+
 void globals_init() {
 	gDigitList[0] = '\0';
+	gDigitIndex = 0;
 }

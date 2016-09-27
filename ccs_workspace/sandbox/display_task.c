@@ -109,16 +109,27 @@ static void LED_out(char c) {
 }
 
 void display_task() {
-	//int i;
+	int i;
 	while(1) {
 		SEM_pendBinary(&SEM_NewChar, SYS_FOREVER);
 
-		/*for (i = 0;i<strlen(gDigitList);i++) {
+		for (i = 0;i<strlen((const char*)gDigitList);i++) {
 			LED_out(gDigitList[i]);
 			TSK_sleep(5000);
 		}
 
-		LED_out('\0');*/
-		LED_out(gNewDigit);
+		gDigitIndex = 0;
+		gDigitList[0] = '\0';
+		gNewDigitCounter = 0;
+		LED_out('\0');
 	}
 }
+
+void digit_timer() {
+	if (gNewDigitCounter == 500) {
+		SEM_postBinary(&SEM_NewChar);
+	} else {
+		gNewDigitCounter++;
+	}
+}
+

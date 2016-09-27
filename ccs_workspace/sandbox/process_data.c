@@ -207,19 +207,14 @@ void processData() {
 			}
 		}
 
-		gNewDigit = dtmfDigits[dtmf_row][dtmf_col];
-		/*if (gNewDigit < '0' || gNewDigit > '9') {
-			asm(" nop");
-		}
-		LOG_printf(&LOG0, "new digit: %c\n", gNewDigit);*/
+		gDigitList[gDigitIndex] = dtmfDigits[dtmf_row][dtmf_col];
+		gDigitIndex++;
+		gDigitList[gDigitIndex + 1] = '\0';
 
-		SEM_postBinary(&SEM_NewChar);
+		gNewDigitCounter = 0;
 
 		break;
 	}
-
-	/* send message to dtmf_task */
-	//SEM_postBinary(&SEM_NewDtmfData);
 }
 
 void sort_freq(float* dft, float* sortResult, size_t length) {
