@@ -207,9 +207,10 @@ void processData() {
 			}
 		}
 
+		/* recognized new digit, add digit to string */
 		gDigitList[gDigitIndex] = dtmfDigits[dtmf_row][dtmf_col];
-		gDigitIndex++;
 		gDigitList[gDigitIndex + 1] = '\0';
+		gDigitIndex++;
 
 		gNewDigitCounter = 0;
 

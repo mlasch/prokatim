@@ -33,7 +33,5 @@ int main(void) {
 	DSK6713_LED_on(2);
 	DSK6713_LED_on(3);
 
-	LOG_printf(&LOG0, "main finished\n");
-
 	return 0;
 }

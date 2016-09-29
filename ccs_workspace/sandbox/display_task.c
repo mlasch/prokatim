@@ -120,16 +120,19 @@ void display_task() {
 
 		gDigitIndex = 0;
 		gDigitList[0] = '\0';
-		gNewDigitCounter = 0;
+
 		LED_out('\0');
 	}
 }
 
 void digit_timer() {
 	if (gNewDigitCounter == 500) {
-		SEM_postBinary(&SEM_NewChar);
+		if (strlen((const char*)gDigitList)) {
+			SEM_postBinary(&SEM_NewChar);
+		}
 	} else {
-		gNewDigitCounter++;
+
 	}
+	gNewDigitCounter++;
 }
 
