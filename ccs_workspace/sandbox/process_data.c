@@ -9,7 +9,6 @@
 #include <csl_edma.h>
 
 #include <sandboxcfg.h>		// includes all the necessary stuff for dsp bios
-#include <c67fastMath.h>
 
 #include "config_audio_codec.h"
 #include "process_data.h"
@@ -17,15 +16,11 @@
 
 #include "globals.h"
 
-Int16 rightChannel[108];
-//Int16 leftChannel[108];
-
-unsigned char dtmfDigits[4][3] = {{'1', '2', '3'},
-					{'4', '5', '6'},
-					{'7', '8', '9'},
-					{'*', '0', '#'}};
-
-
+unsigned char dtmfDigits[4][3] = {
+		{'1', '2', '3'},
+		{'4', '5', '6'},
+		{'7', '8', '9'},
+		{'*', '0', '#'}};
 
 /*
  * HWI interrupt routing to process buffer
@@ -83,19 +78,26 @@ void EDMA_service_routine() {
 		dftResult.freq_1336 = goertzel(rightChannel, 108, 8000, 1336);
 		dftResult.freq_1477 = goertzel(rightChannel, 108, 8000, 1477);
 
+		/* calculate ref level */
+
+		dftResult.freq_697 = dftResult.freq_697 / dftResult.freq_noise;
+		dftResult.freq_770 = dftResult.freq_770 / dftResult.freq_noise;
+		dftResult.freq_852 = dftResult.freq_852 / dftResult.freq_noise;
+		dftResult.freq_941 = dftResult.freq_941 / dftResult.freq_noise;
+		dftResult.freq_1209 = dftResult.freq_1209 / dftResult.freq_noise;
+		dftResult.freq_1336 = dftResult.freq_1336 / dftResult.freq_noise;
+		dftResult.freq_1477 = dftResult.freq_1477 / dftResult.freq_noise;
+
 		SWI_or(&SWI_process_data, 0x00);
 
 		gRcvFlag = 0;
 		gXmtFlag = 0;
-
 	}
 }
-
 
 /*
  * SWI for DTMF detection
  */
-
 void processData() {
 	Uint32 mailbox = SWI_getmbox();
 	float snr_limit;
@@ -106,16 +108,6 @@ void processData() {
 	int match_num = 0;
 	int i, dtmf_row, dtmf_col;
 	static int state = 0;
-
-	/* calculate ref level */
-
-	dftResult.freq_697 = dftResult.freq_697 / dftResult.freq_noise;
-	dftResult.freq_770 = dftResult.freq_770 / dftResult.freq_noise;
-	dftResult.freq_852 = dftResult.freq_852 / dftResult.freq_noise;
-	dftResult.freq_941 = dftResult.freq_941 / dftResult.freq_noise;
-	dftResult.freq_1209 = dftResult.freq_1209 / dftResult.freq_noise;
-	dftResult.freq_1336 = dftResult.freq_1336 / dftResult.freq_noise;
-	dftResult.freq_1477 = dftResult.freq_1477 / dftResult.freq_noise;
 
 	sort_freq((float*) &dftResult, sortResult, 7);
 
@@ -219,9 +211,10 @@ void processData() {
 }
 
 void sort_freq(float* dft, float* sortResult, size_t length) {
-	memcpy(sortResult, dft, sizeof(float)*length);
 	float temp;
 	int i,j;
+
+	memcpy(sortResult, dft, sizeof(float)*length);
 
 	for (i = 0; i<length; i++) {
 		for (j = i+1; j<length;j++) {

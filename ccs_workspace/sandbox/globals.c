@@ -15,6 +15,7 @@
  */
 unsigned char gDigitList[DIGIT_MAX];
 int gDigitIndex;
+
 /*
  * Buffers
  */
@@ -22,6 +23,9 @@ Uint32 gRcvBufferA[108];
 Uint32 gRcvBufferB[108];
 Uint32 gXmtBufferA[108];
 Uint32 gXmtBufferB[108];
+
+Int16 rightChannel[108];
+//Int16 leftChannel[108];
 
 BufferStateTypeDef gBufferState;
 

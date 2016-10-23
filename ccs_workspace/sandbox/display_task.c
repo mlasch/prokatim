@@ -115,7 +115,7 @@ void display_task() {
 
 		for (i = 0;i<strlen((const char*)gDigitList);i++) {
 			LED_out(gDigitList[i]);
-			TSK_sleep(5000);
+			TSK_sleep(2000);
 		}
 
 		gDigitIndex = 0;
@@ -130,9 +130,8 @@ void digit_timer() {
 		if (strlen((const char*)gDigitList)) {
 			SEM_postBinary(&SEM_NewChar);
 		}
-	} else {
-
 	}
+
 	gNewDigitCounter++;
 }
 
